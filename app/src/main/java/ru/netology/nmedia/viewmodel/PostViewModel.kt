@@ -1,13 +1,14 @@
 package ru.netology.nmedia.viewmodel
 
-import android.app.Application
 import androidx.lifecycle.*
+import dagger.hilt.android.lifecycle.HiltViewModel
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.model.FeedModel
 import ru.netology.nmedia.repository.*
 import ru.netology.nmedia.util.SingleLiveEvent
 import java.io.IOException
 import kotlin.concurrent.thread
+import javax.inject.Inject
 
 private val empty = Post(
     id = 0,
@@ -18,9 +19,10 @@ private val empty = Post(
     published = ""
 )
 
-class PostViewModel(application: Application) : AndroidViewModel(application) {
-    // упрощённый вариант
-    private val repository: PostRepository = PostRepositoryImpl()
+@HiltViewModel
+class PostViewModel @Inject constructor(
+    private val repository: PostRepository,
+) : ViewModel() {
     private val _data = MutableLiveData(FeedModel())
     val data: LiveData<FeedModel>
         get() = _data

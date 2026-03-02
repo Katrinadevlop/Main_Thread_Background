@@ -7,14 +7,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import ru.netology.nmedia.dto.Post
-import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
 
-class PostRepositoryImpl: PostRepository {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .build()
-    private val gson = Gson()
+class PostRepositoryImpl @Inject constructor(
+    private val client: OkHttpClient,
+    private val gson: Gson,
+): PostRepository {
     private val typeToken = object : TypeToken<List<Post>>() {}
 
     companion object {

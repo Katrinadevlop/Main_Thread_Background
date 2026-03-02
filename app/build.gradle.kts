@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.ksp)
-    alias(libs.plugins.google.services)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -64,5 +64,8 @@ dependencies {
     implementation(libs.play.services)
     implementation(libs.okhttp)
     implementation(libs.androidx.swiperefreshlayout)
+    implementation(libs.hilt.android)
+    implementation(libs.androidx.hilt.navigation.fragment)
+    ksp(libs.hilt.compiler)
     coreLibraryDesugaring(libs.desugaring)
 }

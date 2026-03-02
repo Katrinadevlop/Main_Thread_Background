@@ -15,6 +15,8 @@ okhttp = "5.3.2"
 room = "2.8.4"
 firebase = "34.6.0"
 playServices = "18.9.0"
+hilt = "2.59.2"
+androidxHilt = "1.3.0"
 desugaring = "2.1.5"
 swiperefreshlayout = "1.1.0"
  
@@ -33,6 +35,9 @@ firebase = { group = "com.google.firebase", name = "firebase-bom", version.ref =
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 play-services = { group = "com.google.android.gms", name = "play-services-base", version.ref = "playServices" }
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+androidx-hilt-navigation-fragment = { group = "androidx.hilt", name = "hilt-navigation-fragment", version.ref = "androidxHilt" }
 desugaring = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugaring" }
 androidx-swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
 
@@ -41,3 +46,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
