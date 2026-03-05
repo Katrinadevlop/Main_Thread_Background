@@ -1,5 +1,6 @@
 package ru.netology.nmedia.di
 
+import android.content.Context
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.gson.Gson
@@ -7,8 +8,11 @@ import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
+import ru.netology.nmedia.dao.PostDao
+import ru.netology.nmedia.db.AppDb
 import ru.netology.nmedia.repository.PostRepository
 import ru.netology.nmedia.repository.PostRepositoryImpl
 import java.util.concurrent.TimeUnit
@@ -38,7 +42,12 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideFirebaseMessaging(): FirebaseMessaging = FirebaseMessaging.getInstance()
+    fun provideAppDb(@ApplicationContext context: Context): AppDb =
+        AppDb.getInstance(context)
+
+    @Provides
+    @Singleton
+    fun providePostDao(db: AppDb): PostDao = db.postDao()
 
     @Provides
     @Singleton

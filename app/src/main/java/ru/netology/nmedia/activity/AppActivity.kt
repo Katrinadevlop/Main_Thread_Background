@@ -15,6 +15,7 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.AndroidEntryPoint
+import android.util.Log
 import ru.netology.nmedia.R
 import ru.netology.nmedia.activity.NewPostFragment.Companion.textArg
 import ru.netology.nmedia.databinding.ActivityAppBinding
@@ -25,8 +26,6 @@ class AppActivity : AppCompatActivity() {
     @Inject
     lateinit var googleApiAvailability: GoogleApiAvailability
 
-    @Inject
-    lateinit var firebaseMessaging: FirebaseMessaging
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,8 +92,12 @@ class AppActivity : AppCompatActivity() {
                 .show()
         }
 
-        firebaseMessaging.token.addOnSuccessListener {
-            println(it)
+        try {
+            FirebaseMessaging.getInstance().token.addOnSuccessListener {
+                println(it)
+            }
+        } catch (e: Exception) {
+            Log.w("AppActivity", "Firebase not available: ${e.message}")
         }
     }
 }

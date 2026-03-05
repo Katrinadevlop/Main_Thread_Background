@@ -1,90 +1,37 @@
 package ru.netology.nmedia.repository
 
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
+import ru.netology.nmedia.dao.PostDao
 import ru.netology.nmedia.dto.Post
+import ru.netology.nmedia.entity.PostEntity
 import javax.inject.Inject
 
-
 class PostRepositoryImpl @Inject constructor(
-    private val client: OkHttpClient,
-    private val gson: Gson,
-): PostRepository {
-    private val typeToken = object : TypeToken<List<Post>>() {}
-
-    companion object {
-        private const val BASE_URL = "http://10.0.2.2:9999"
-        private val jsonType = "application/json".toMediaType()
-    }
-
-    override fun getAll(): List<Post> {
-        val request: Request = Request.Builder()
-            .url("${BASE_URL}/api/slow/posts")
-            .build()
-
-        return client.newCall(request)
-            .execute()
-            .let { it.body?.string() ?: throw RuntimeException("body is null") }
-            .let {
-                gson.fromJson(it, typeToken.type)
-            }
-    }
+    private val dao: PostDao,
+) : PostRepository {
+    override fun getAll(): List<Post> =
+        dao.getAll().map(PostEntity::toDto)
 
     override fun likeById(id: Long) {
-        // Сначала получаем текущий пост, чтобы понять, лайкнут он уже или нет
-        val getRequest: Request = Request.Builder()
-            .url("${BASE_URL}/api/posts/$id")
-            .build()
-
-        val post = client.newCall(getRequest)
-            .execute()
-            .let { response ->
-                val body = response.body?.string() ?: throw RuntimeException("body is null")
-                gson.fromJson(body, Post::class.java)
-            }
-
-        // В зависимости от текущего состояния отправляем POST (лайк) или DELETE (снять лайк)
-        val likeRequestBuilder = Request.Builder()
-            .url("${BASE_URL}/api/posts/$id/likes")
-
-        val likeRequest = if (!post.likedByMe) {
-            likeRequestBuilder
-                .post(ByteArray(0).toRequestBody(jsonType))
-                .build()
-        } else {
-            likeRequestBuilder
-                .delete()
-                .build()
-        }
-
-        client.newCall(likeRequest)
-            .execute()
-            .close()
+        dao.likeById(id)
     }
 
     override fun save(post: Post) {
-        val request: Request = Request.Builder()
-            .post(gson.toJson(post).toRequestBody(jsonType))
-            .url("${BASE_URL}/api/slow/posts")
-            .build()
-
-        client.newCall(request)
-            .execute()
-            .close()
+        val entity = if (post.id == 0L) {
+            PostEntity(
+                id = 0L,
+                author = "Me",
+                content = post.content,
+                published = "Now",
+                likedByMe = false,
+                likes = 0,
+            )
+        } else {
+            PostEntity.fromDto(post)
+        }
+        dao.save(entity)
     }
 
     override fun removeById(id: Long) {
-        val request: Request = Request.Builder()
-            .delete()
-            .url("${BASE_URL}/api/slow/posts/$id")
-            .build()
-
-        client.newCall(request)
-            .execute()
-            .close()
+        dao.removeById(id)
     }
 }

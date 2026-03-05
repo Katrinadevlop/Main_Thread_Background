@@ -2,6 +2,8 @@ package ru.netology.nmedia.viewmodel
 
 import androidx.lifecycle.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import ru.netology.nmedia.auth.AppAuth
+import ru.netology.nmedia.auth.AuthState
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.model.FeedModel
 import ru.netology.nmedia.repository.*
@@ -22,6 +24,7 @@ private val empty = Post(
 @HiltViewModel
 class PostViewModel @Inject constructor(
     private val repository: PostRepository,
+    appAuth: AppAuth,
 ) : ViewModel() {
     private val _data = MutableLiveData(FeedModel())
     val data: LiveData<FeedModel>
@@ -31,8 +34,19 @@ class PostViewModel @Inject constructor(
     val postCreated: LiveData<Unit>
         get() = _postCreated
 
-    init {
+    private val authObserver = Observer<AuthState> {
         loadPosts()
+    }
+
+    init {
+        appAuth.authState.observeForever(authObserver)
+    }
+
+    private val _appAuth = appAuth
+
+    override fun onCleared() {
+        super.onCleared()
+        _appAuth.authState.removeObserver(authObserver)
     }
 
     fun loadPosts() {
