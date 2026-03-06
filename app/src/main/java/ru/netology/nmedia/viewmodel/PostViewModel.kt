@@ -21,6 +21,8 @@ private val empty = Post(
     published = ""
 )
 
+private const val PAGE_SIZE = 10
+
 @HiltViewModel
 class PostViewModel @Inject constructor(
     private val repository: PostRepository,
@@ -49,30 +51,64 @@ class PostViewModel @Inject constructor(
         _appAuth.authState.removeObserver(authObserver)
     }
 
+    /**
+     * Первичная загрузка:
+     * - Если БД пустая — загружаем latest с сервера.
+     * - Если в БД есть данные — показываем их.
+     */
     fun loadPosts() {
         thread {
-            // Начинаем загрузку (первичная загрузка)
             _data.postValue(FeedModel(loading = true))
             try {
-                // Данные успешно получены
-                val posts = repository.getAll()
-                FeedModel(posts = posts, empty = posts.isEmpty())
-            } catch (e: IOException) {
-                // Получена ошибка
-                FeedModel(error = true)
-            }.also(_data::postValue)
-        }
-    }
-
-    fun refreshPosts() {
-        thread {
-            // Обновление по свайпу вниз — используем флаг refreshing
-            _data.postValue(_data.value?.copy(refreshing = true) ?: FeedModel(refreshing = true))
-            try {
-                val posts = repository.getAll()
+                val posts = if (repository.dbIsEmpty()) {
+                    repository.getLatest(PAGE_SIZE)
+                } else {
+                    repository.getAll()
+                }
                 _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
             } catch (e: IOException) {
                 _data.postValue(FeedModel(error = true))
+            }
+        }
+    }
+
+    /**
+     * REFRESH: swipe-to-refresh — загружает посты новее верхнего в кеше
+     * и добавляет их сверху (не затирая кеш).
+     */
+    fun refreshPosts() {
+        thread {
+            val current = _data.value ?: FeedModel()
+            _data.postValue(current.copy(refreshing = true))
+            try {
+                val topId = current.posts.firstOrNull()?.id
+                val posts = if (topId != null) {
+                    repository.getNewer(topId)
+                } else {
+                    repository.getLatest(PAGE_SIZE)
+                }
+                _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
+            } catch (e: IOException) {
+                _data.postValue(current.copy(refreshing = false))
+            }
+        }
+    }
+
+    /**
+     * APPEND: подгрузка старых постов при скролле вниз.
+     */
+    fun appendPosts() {
+        val current = _data.value ?: return
+        if (current.appendLoading) return // уже грузим
+        val bottomId = current.posts.lastOrNull()?.id ?: return
+
+        thread {
+            _data.postValue(current.copy(appendLoading = true))
+            try {
+                val posts = repository.getBefore(bottomId, PAGE_SIZE)
+                _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
+            } catch (e: IOException) {
+                _data.postValue(current.copy(appendLoading = false))
             }
         }
     }
@@ -103,11 +139,9 @@ class PostViewModel @Inject constructor(
         thread {
             try {
                 repository.likeById(id)
-                // После успешного лайка/анлайка запрашиваем актуальный список постов
                 val posts = repository.getAll()
                 _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
             } catch (e: IOException) {
-                // В случае ошибки просто помечаем состояние как ошибочное
                 _data.postValue(FeedModel(error = true))
             }
         }
@@ -115,7 +149,6 @@ class PostViewModel @Inject constructor(
 
     fun removeById(id: Long) {
         thread {
-            // Оптимистичная модель
             val old = _data.value?.posts.orEmpty()
             _data.postValue(
                 _data.value?.copy(posts = _data.value?.posts.orEmpty()

@@ -15,6 +15,8 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import dagger.hilt.android.AndroidEntryPoint
 import ru.netology.nmedia.R
 import ru.netology.nmedia.adapter.OnInteractionListener
@@ -96,6 +98,20 @@ class FeedFragment : Fragment() {
             }
         })
         binding.list.adapter = adapter
+
+        // APPEND: подгрузка при скролле вниз
+        binding.list.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+                if (dy <= 0) return // скроллим вверх — ничего не делаем (PREPEND отключен)
+                val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                val lastVisible = layoutManager.findLastVisibleItemPosition()
+                val total = adapter.itemCount
+                if (lastVisible >= total - 3) {
+                    viewModel.appendPosts()
+                }
+            }
+        })
 
         binding.swipeRefresh.setOnRefreshListener {
             viewModel.refreshPosts()
