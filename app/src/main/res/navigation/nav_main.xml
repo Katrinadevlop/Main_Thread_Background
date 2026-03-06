@@ -39,4 +39,14 @@
         android:name="ru.netology.nmedia.activity.RegisterFragment"
         android:label="fragment_register"
         tools:layout="@layout/fragment_register" />
+    <fragment
+        android:id="@+id/statsFragment"
+        android:name="ru.netology.nmedia.activity.StatsFragment"
+        android:label="@string/menu_stats"
+        tools:layout="@layout/fragment_stats" />
+    <fragment
+        android:id="@+id/statsFullFragment"
+        android:name="ru.netology.nmedia.activity.StatsFullFragment"
+        android:label="@string/menu_stats_full"
+        tools:layout="@layout/fragment_stats_full" />
 </navigation>

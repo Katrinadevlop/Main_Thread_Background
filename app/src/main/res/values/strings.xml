@@ -29,4 +29,7 @@
     <string name="separator_today">Today</string>
     <string name="separator_yesterday">Yesterday</string>
     <string name="separator_last_week">Last week</string>
+    <string name="menu_feed">Feed</string>
+    <string name="menu_stats">Stats</string>
+    <string name="menu_stats_full">Stats 100%</string>
 </resources>

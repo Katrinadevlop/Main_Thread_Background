@@ -24,4 +24,7 @@
     <string name="separator_today">Сегодня</string>
     <string name="separator_yesterday">Вчера</string>
     <string name="separator_last_week">На прошлой неделе</string>
+    <string name="menu_feed">Лента</string>
+    <string name="menu_stats">Статистика</string>
+    <string name="menu_stats_full">Статистика 100%</string>
 </resources>
