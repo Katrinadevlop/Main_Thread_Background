@@ -18,9 +18,18 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import dagger.hilt.android.AndroidEntryPoint
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import ru.netology.nmedia.R
+import ru.netology.nmedia.adapter.FeedItem
+import ru.netology.nmedia.adapter.LoadingType
 import ru.netology.nmedia.adapter.OnInteractionListener
 import ru.netology.nmedia.adapter.PostsAdapter
+import ru.netology.nmedia.adapter.SeparatorType
 import ru.netology.nmedia.databinding.FragmentFeedBinding
 import ru.netology.nmedia.dto.Post
 import ru.netology.nmedia.viewmodel.AuthViewModel
@@ -99,16 +108,22 @@ class FeedFragment : Fragment() {
         })
         binding.list.adapter = adapter
 
-        // APPEND: подгрузка при скролле вниз
+        // PREPEND/APPEND: подгрузка при скролле вверх/вниз
         binding.list.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
-                if (dy <= 0) return // скроллим вверх — ничего не делаем (PREPEND отключен)
                 val layoutManager = recyclerView.layoutManager as LinearLayoutManager
-                val lastVisible = layoutManager.findLastVisibleItemPosition()
-                val total = adapter.itemCount
-                if (lastVisible >= total - 3) {
-                    viewModel.appendPosts()
+                if (dy < 0) {
+                    val firstVisible = layoutManager.findFirstVisibleItemPosition()
+                    if (firstVisible <= 2) {
+                        viewModel.prependPosts()
+                    }
+                } else if (dy > 0) {
+                    val lastVisible = layoutManager.findLastVisibleItemPosition()
+                    val total = adapter.itemCount
+                    if (lastVisible >= total - 3) {
+                        viewModel.appendPosts()
+                    }
                 }
             }
         })
@@ -118,7 +133,11 @@ class FeedFragment : Fragment() {
         }
 
         viewModel.data.observe(viewLifecycleOwner) { state ->
-            adapter.submitList(state.posts)
+            val items = mutableListOf<FeedItem>()
+            if (state.prependLoading) items += FeedItem.LoadingItem(LoadingType.PREPEND)
+            items += withSeparators(state.posts)
+            if (state.appendLoading) items += FeedItem.LoadingItem(LoadingType.APPEND)
+            adapter.submitList(items)
             binding.progress.isVisible = state.loading && !state.refreshing
             binding.errorGroup.isVisible = state.error
             binding.emptyText.isVisible = state.empty
@@ -134,5 +153,51 @@ class FeedFragment : Fragment() {
         }
 
         return binding.root
+    }
+
+    private fun withSeparators(posts: List<Post>): List<FeedItem> {
+        if (posts.isEmpty()) return emptyList()
+        val now = Instant.now()
+        val result = ArrayList<FeedItem>(posts.size + 3)
+        var lastSeparator: SeparatorType? = null
+        for (post in posts) {
+            val separator = resolveSeparatorType(post.published, now)
+            if (separator != null && separator != lastSeparator) {
+                result += FeedItem.SeparatorItem(separator)
+                lastSeparator = separator
+            }
+            result += FeedItem.PostItem(post)
+        }
+        return result
+    }
+
+    private fun resolveSeparatorType(published: String, now: Instant): SeparatorType? {
+        val instant = parsePublishedInstant(published, now) ?: return SeparatorType.LAST_WEEK
+        val hours = Duration.between(instant, now).toHours()
+        return when {
+            hours < 24 -> SeparatorType.TODAY
+            hours < 48 -> SeparatorType.YESTERDAY
+            else -> SeparatorType.LAST_WEEK
+        }
+    }
+
+    private fun parsePublishedInstant(value: String, now: Instant): Instant? {
+        val text = value.trim()
+        if (text.equals("now", true) || text.equals("сейчас", true)) return now
+
+        runCatching { Instant.parse(text) }.getOrNull()?.let { return it }
+        runCatching { OffsetDateTime.parse(text).toInstant() }.getOrNull()?.let { return it }
+        runCatching {
+            LocalDateTime.parse(text).atZone(ZoneId.systemDefault()).toInstant()
+        }.getOrNull()?.let { return it }
+        runCatching {
+            LocalDateTime.parse(text, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                .atZone(ZoneId.systemDefault()).toInstant()
+        }.getOrNull()?.let { return it }
+        runCatching {
+            val numeric = text.toLong()
+            if (numeric > 100_000_000_000L) Instant.ofEpochMilli(numeric) else Instant.ofEpochSecond(numeric)
+        }.getOrNull()?.let { return it }
+        return null
     }
 }

@@ -9,4 +9,5 @@ data class FeedModel(
     val empty: Boolean = false,
     val refreshing: Boolean = false,
     val appendLoading: Boolean = false,
+    val prependLoading: Boolean = false,
 )

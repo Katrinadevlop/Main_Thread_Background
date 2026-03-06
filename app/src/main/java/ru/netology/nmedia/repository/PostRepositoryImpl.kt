@@ -68,7 +68,7 @@ class PostRepositoryImpl @Inject constructor(
                 id = 0L,
                 author = "Me",
                 content = post.content,
-                published = "Now",
+                published = java.time.Instant.now().toString(),
                 likedByMe = false,
                 likes = 0,
             )

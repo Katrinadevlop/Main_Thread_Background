@@ -93,13 +93,31 @@ class PostViewModel @Inject constructor(
             }
         }
     }
+    /**
+     * PREPEND: подгрузка новых постов при скролле вверх.
+     */
+    fun prependPosts() {
+        val current = _data.value ?: return
+        if (current.prependLoading || current.refreshing || current.loading) return
+        val topId = current.posts.firstOrNull()?.id ?: return
+
+        thread {
+            _data.postValue(current.copy(prependLoading = true))
+            try {
+                val posts = repository.getNewer(topId)
+                _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
+            } catch (e: IOException) {
+                _data.postValue(current.copy(prependLoading = false))
+            }
+        }
+    }
 
     /**
      * APPEND: подгрузка старых постов при скролле вниз.
      */
     fun appendPosts() {
         val current = _data.value ?: return
-        if (current.appendLoading) return // уже грузим
+        if (current.appendLoading || current.refreshing || current.loading) return // уже грузим
         val bottomId = current.posts.lastOrNull()?.id ?: return
 
         thread {
