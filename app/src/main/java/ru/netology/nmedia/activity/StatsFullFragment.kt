@@ -14,12 +14,11 @@ class StatsFullFragment : Fragment() {
         savedInstanceState: Bundle?,
     ): View {
         val binding = FragmentStatsFullBinding.inflate(inflater, container, false)
-        binding.stats.maxValue = null
         binding.stats.data = listOf(
-            500F,
-            500F,
-            500F,
-            500F,
+            0.25F,
+            0.25F,
+            0.25F,
+            0.25F,
         )
         return binding.root
     }
