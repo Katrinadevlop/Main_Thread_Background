@@ -4,17 +4,19 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
 import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
-import okhttp3.MediaType.Companion.toMediaType
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.auth.AuthState
 import ru.netology.nmedia.dto.Token
 import ru.netology.nmedia.util.SingleLiveEvent
 import java.io.IOException
 import javax.inject.Inject
-import kotlin.concurrent.thread
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -27,6 +29,9 @@ class AuthViewModel @Inject constructor(
     private val _authError = SingleLiveEvent<String>()
     val authError: LiveData<String> = _authError
 
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(Dispatchers.IO + job)
+
     companion object {
         private const val BASE_URL = "http://10.0.2.2:9999"
     }
@@ -34,20 +39,28 @@ class AuthViewModel @Inject constructor(
     val isAuthenticated: Boolean
         get() = appAuth.authState.value?.token != null
 
+    override fun onCleared() {
+        super.onCleared()
+        job.cancel()
+    }
+
     fun login(login: String, pass: String) {
-        thread {
+        scope.launch {
             try {
-                val json = gson.toJson(mapOf("login" to login, "pass" to pass))
-                val body = json.toRequestBody("application/json".toMediaType())
+                val formBody = FormBody.Builder()
+                    .add("login", login)
+                    .add("pass", pass)
+                    .build()
+
                 val request = Request.Builder()
-                    .url("${BASE_URL}/api/auth/login")
-                    .post(body)
+                    .url("${BASE_URL}/api/users/authentication")
+                    .post(formBody)
                     .build()
 
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         _authError.postValue("Login failed: ${response.code}")
-                        return@thread
+                        return@launch
                     }
                     val body =
                         response.body?.string() ?: throw RuntimeException("Empty response body")
@@ -61,19 +74,23 @@ class AuthViewModel @Inject constructor(
     }
 
     fun register(login: String, pass: String, name: String) {
-        thread {
+        scope.launch {
             try {
-                val json = gson.toJson(mapOf("login" to login, "pass" to pass, "name" to name))
-                val body = json.toRequestBody("application/json".toMediaType())
+                val formBody = FormBody.Builder()
+                    .add("login", login)
+                    .add("pass", pass)
+                    .add("name", name)
+                    .build()
+
                 val request = Request.Builder()
-                    .url("${BASE_URL}/api/auth/register")
-                    .post(body)
+                    .url("${BASE_URL}/api/users/registration")
+                    .post(formBody)
                     .build()
 
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         _authError.postValue("Registration failed: ${response.code}")
-                        return@thread
+                        return@launch
                     }
                     val body =
                         response.body?.string() ?: throw RuntimeException("Empty response body")

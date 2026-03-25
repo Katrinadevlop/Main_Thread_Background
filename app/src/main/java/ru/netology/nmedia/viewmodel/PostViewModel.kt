@@ -2,6 +2,10 @@ package ru.netology.nmedia.viewmodel
 
 import androidx.lifecycle.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import ru.netology.nmedia.auth.AppAuth
 import ru.netology.nmedia.auth.AuthState
 import ru.netology.nmedia.dto.Post
@@ -9,7 +13,6 @@ import ru.netology.nmedia.model.FeedModel
 import ru.netology.nmedia.repository.*
 import ru.netology.nmedia.util.SingleLiveEvent
 import java.io.IOException
-import kotlin.concurrent.thread
 import javax.inject.Inject
 
 private val empty = Post(
@@ -36,6 +39,9 @@ class PostViewModel @Inject constructor(
     val postCreated: LiveData<Unit>
         get() = _postCreated
 
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(Dispatchers.IO + job)
+
     private val authObserver = Observer<AuthState> {
         loadPosts()
     }
@@ -49,6 +55,7 @@ class PostViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         _appAuth.authState.removeObserver(authObserver)
+        job.cancel()
     }
 
     /**
@@ -57,7 +64,7 @@ class PostViewModel @Inject constructor(
      * - Если в БД есть данные — показываем их.
      */
     fun loadPosts() {
-        thread {
+        scope.launch {
             _data.postValue(FeedModel(loading = true))
             try {
                 val posts = if (repository.dbIsEmpty()) {
@@ -77,7 +84,7 @@ class PostViewModel @Inject constructor(
      * и добавляет их сверху (не затирая кеш).
      */
     fun refreshPosts() {
-        thread {
+        scope.launch {
             val current = _data.value ?: FeedModel()
             _data.postValue(current.copy(refreshing = true))
             try {
@@ -101,7 +108,7 @@ class PostViewModel @Inject constructor(
         if (current.prependLoading || current.refreshing || current.loading) return
         val topId = current.posts.firstOrNull()?.id ?: return
 
-        thread {
+        scope.launch {
             _data.postValue(current.copy(prependLoading = true))
             try {
                 val posts = repository.getNewer(topId)
@@ -120,7 +127,7 @@ class PostViewModel @Inject constructor(
         if (current.appendLoading || current.refreshing || current.loading) return // уже грузим
         val bottomId = current.posts.lastOrNull()?.id ?: return
 
-        thread {
+        scope.launch {
             _data.postValue(current.copy(appendLoading = true))
             try {
                 val posts = repository.getBefore(bottomId, PAGE_SIZE)
@@ -133,7 +140,7 @@ class PostViewModel @Inject constructor(
 
     fun save() {
         edited.value?.let {
-            thread {
+            scope.launch {
                 repository.save(it)
                 _postCreated.postValue(Unit)
             }
@@ -154,7 +161,7 @@ class PostViewModel @Inject constructor(
     }
 
     fun likeById(id: Long) {
-        thread {
+        scope.launch {
             try {
                 repository.likeById(id)
                 val posts = repository.getAll()
@@ -166,17 +173,15 @@ class PostViewModel @Inject constructor(
     }
 
     fun removeById(id: Long) {
-        thread {
-            val old = _data.value?.posts.orEmpty()
-            _data.postValue(
-                _data.value?.copy(posts = _data.value?.posts.orEmpty()
-                    .filter { it.id != id }
-                )
-            )
+        val current = _data.value ?: return
+        val oldPosts = current.posts
+
+        scope.launch {
+            _data.postValue(current.copy(posts = current.posts.filter { it.id != id }))
             try {
                 repository.removeById(id)
             } catch (e: IOException) {
-                _data.postValue(_data.value?.copy(posts = old))
+                _data.postValue(current.copy(posts = oldPosts))
             }
         }
     }
