@@ -43,7 +43,7 @@ class PostViewModel @Inject constructor(
     private val scope = CoroutineScope(Dispatchers.IO + job)
 
     private val authObserver = Observer<AuthState> {
-        loadPosts()
+        loadPosts(forceRemote = true)
     }
 
     init {
@@ -63,14 +63,14 @@ class PostViewModel @Inject constructor(
      * - Если БД пустая — загружаем latest с сервера.
      * - Если в БД есть данные — показываем их.
      */
-    fun loadPosts() {
+    fun loadPosts(forceRemote: Boolean = false) {
         scope.launch {
             _data.postValue(FeedModel(loading = true))
             try {
-                val posts = if (repository.dbIsEmpty()) {
-                    repository.getLatest(PAGE_SIZE)
-                } else {
-                    repository.getAll()
+                val posts = when {
+                    forceRemote -> repository.getLatest(PAGE_SIZE)
+                    repository.dbIsEmpty() -> repository.getLatest(PAGE_SIZE)
+                    else -> repository.getAll()
                 }
                 _data.postValue(FeedModel(posts = posts, empty = posts.isEmpty()))
             } catch (e: IOException) {
